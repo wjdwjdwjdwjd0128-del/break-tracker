@@ -234,7 +234,7 @@
     const name = localStorage.getItem(NAME_KEY);
     const company = localStorage.getItem(CO_KEY);
     if (name && company) {
-      recordBreak(name, company);
+      recordBreak(name, company); // 스캔할 때마다 현재 시간으로 새로 기록
     } else {
       show('register');
     }
@@ -268,6 +268,8 @@
     recordBreak(name, selectedCompany);
   }
 
+  const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwJ_J9z4VPEmuktpQfg_LO_0X0N9cSxtxzUHnijl66nerenXnNjEx4lIaMPHi1DGo2z/exec';
+
   function recordBreak(name, company) {
     const now = new Date();
     const timeStr = now.toLocaleString('ko-KR', {
@@ -278,6 +280,14 @@
     const logs = getLogs();
     logs.unshift({ name, company, time: timeStr, ts: Date.now() });
     saveLogs(logs);
+
+    // 구글 시트에 전송
+    fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ company, name, time: timeStr })
+    }).catch(() => {});
 
     document.getElementById('done-company').textContent = company;
     document.getElementById('done-name').textContent = name;

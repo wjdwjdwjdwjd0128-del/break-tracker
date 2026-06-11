@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>휴식 기록</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #f5f6f8;
+    min-height: 100vh;
+  }
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .screen.active { display: flex; }
+
+  /* ── 등록 화면 ── */
+  #screen-register { background: #fff; }
+  .reg-icon { font-size: 52px; margin-bottom: 18px; }
+  .reg-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 8px; }
+  .reg-sub { font-size: 14px; color: #999; margin-bottom: 32px; line-height: 1.6; }
+
+  .step-label {
+    width: 100%;
+    max-width: 320px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: #aaa;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-top: 20px;
+  }
+  .step-label:first-of-type { margin-top: 0; }
+
+  /* 업체 선택 */
+  .company-grid {
+    width: 100%;
+    max-width: 320px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .company-btn {
+    padding: 13px 8px;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .company-btn.selected {
+    border-color: #4f8ef7;
+    background: #eef3ff;
+    color: #4f8ef7;
+  }
+
+  /* 이름 검색 */
+  .input-wrap { width: 100%; max-width: 320px; }
+  .input-wrap input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a2e;
+    outline: none;
+    background: #fff;
+    transition: border-color .2s;
+  }
+  .input-wrap input:focus { border-color: #4f8ef7; }
+
+  .autocomplete {
+    width: 100%;
+    max-width: 320px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0,0,0,.10);
+    margin-top: 6px;
+    display: none;
+  }
+  .ac-item {
+    padding: 14px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a2e;
+    cursor: pointer;
+    border-bottom: 1px solid #f5f5f5;
+    transition: background .1s;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:active { background: #eef3ff; }
+
+  .confirm-btn {
+    width: 100%;
+    max-width: 320px;
+    margin-top: 16px;
+    padding: 16px;
+    background: #4f8ef7;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    display: none;
+    transition: background .15s;
+  }
+  .confirm-btn:active { background: #3a7ae0; }
+
+  /* ── 완료 화면 ── */
+  #screen-done { background: #fff; }
+  .done-badge {
+    width: 96px; height: 96px;
+    background: #eef6ee;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 44px;
+    margin-bottom: 24px;
+    animation: pop .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop {
+    from { transform: scale(0.4); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .done-company { font-size: 13px; font-weight: 700; color: #4f8ef7; margin-bottom: 6px; letter-spacing: .04em; }
+  .done-name  { font-size: 30px; font-weight: 800; color: #1a1a2e; margin-bottom: 8px; }
+  .done-time  { font-size: 15px; font-weight: 600; color: #888; margin-bottom: 4px; }
+  .done-msg   { font-size: 13px; color: #ccc; margin-bottom: 40px; }
+  .reset-link { font-size: 12px; color: #ccc; cursor: pointer; text-decoration: underline; }
+
+  .fab {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 46px; height: 46px;
+    background: #f0f0f0;
+    border-radius: 50%; border: none;
+    font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  }
+
+  /* ── 관리자 화면 ── */
+  #screen-admin {
+    justify-content: flex-start;
+    padding: 0;
+    text-align: left;
+    background: #f5f6f8;
+    align-items: stretch;
+  }
+  .admin-header {
+    background: #1a1a2e;
+    padding: 18px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .admin-header h2 { font-size: 16px; font-weight: 700; color: #fff; }
+  .close-btn { background: none; border: none; color: #aaa; font-size: 13px; cursor: pointer; }
+
+  .admin-body { padding: 20px; }
+  .s-label {
+    font-size: 11px; font-weight: 700; color: #aaa;
+    letter-spacing: .1em; text-transform: uppercase;
+    margin: 24px 0 10px;
+  }
+  .s-label:first-child { margin-top: 0; }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .add-row input {
+    flex: 1; padding: 11px 14px;
+    border: 1.5px solid #e8e8e8; border-radius: 10px;
+    font-size: 15px; outline: none; background: #fff;
+  }
+  .add-row input:focus { border-color: #4f8ef7; }
+  .add-row button {
+    padding: 11px 16px;
+    background: #4f8ef7; color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px; border-bottom: 1px solid #f5f5f5;
+    font-size: 14px; color: #333;
+  }
+  .li:last-child { border-bottom: none; }
+  .x-btn { background: none; border: none; color: #ddd; font-size: 20px; cursor: pointer; padding: 0 4px; }
+  .x-btn:active { color: #ff5a5a; }
+
+  .log-li { padding: 13px 16px; border-bottom: 1px solid #f5f5f5; }
+  .log-li:last-child { border-bottom: none; }
+  .log-name { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+  .log-meta { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+  .empty { text-align: center; padding: 24px; color: #ccc; font-size: 13px; }
+  .danger-btn {
+    margin-top: 10px; padding: 11px 16px;
+    background: #fff; color: #ff5a5a;
+    border: 1px solid #ffcdd2; border-radius: 8px;
+    font-size: 13px; cursor: pointer; width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ 1. 등록 화면 ══ -->
+<div id="screen-register" class="screen active">
+  <div class="reg-icon">👋</div>
+  <div class="reg-title">처음이신가요?</div>
+  <div class="reg-sub">협력회사와 이름을 선택해주세요.<br>다음부터는 스캔만 하면 돼요!</div>
+
+  <div class="step-label">협력회사 선택</div>
+  <div class="company-grid" id="company-grid">
+    <button class="company-btn" onclick="selectCompany(this, '대진')">대진</button>
+    <button class="company-btn" onclick="selectCompany(this, '양지')">양지</button>
+    <button class="company-btn" onclick="selectCompany(this, 'IPARK 현대산업개발')">IPARK 현대산업개발</button>
+    <button class="company-btn" onclick="selectCompany(this, '중원')">중원</button>
+    <button class="company-btn" onclick="selectCompany(this, '정원')">정원</button>
+    <button class="company-btn" onclick="selectCompany(this, '우인')">우인</button>
+    <button class="company-btn" onclick="selectCompany(this, '기타')">기타</button>
+  </div>
+
+  <div class="step-label" style="margin-top:24px">이름 검색</div>
+  <div class="input-wrap">
+    <input type="text" id="reg-input" placeholder="이름 입력 (예: 홍길)"
+      autocomplete="off" oninput="onSearch()" />
+  </div>
+  <div class="autocomplete" id="reg-ac"></div>
+  <button class="confirm-btn" id="confirm-btn" onclick="confirmRegister()">등록하기</button>
+</div>
+
+<!-- ══ 2. 완료 화면 ══ -->
+<div id="screen-done" class="screen">
+  <div class="done-badge">☕</div>
+  <div class="done-company" id="done-company"></div>
+  <div class="done-name"    id="done-name"></div>
+  <div class="done-time"    id="done-time"></div>
+  <div class="done-msg">휴식 기록 완료!</div>
+  <div class="reset-link" onclick="resetMe()">내 정보가 아닌가요?</div>
+  <button class="fab" onclick="goAdmin()">⚙️</button>
+</div>
+
+<!-- ══ 3. 관리자 화면 ══ -->
+<div id="screen-admin" class="screen">
+  <div class="admin-header">
+    <h2>⚙️ 관리자</h2>
+    <button class="close-btn" onclick="show('done')">✕ 닫기</button>
+  </div>
+  <div class="admin-body">
+
+    <div class="s-label">직원 등록</div>
+    <div class="add-row">
+      <input type="text" id="emp-input" placeholder="이름 입력"
+        onkeydown="if(event.key==='Enter')addEmp()">
+      <button onclick="addEmp()">추가</button>
+    </div>
+    <div class="card" id="emp-list"></div>
+
+    <div class="s-label">오늘 휴식 기록</div>
+    <div class="card" id="log-list"></div>
+    <button class="danger-btn" onclick="clearLogs()">기록 전체 삭제</button>
+
+  </div>
+</div>
+
+<script>
+  const EMP_KEY  = 'brk_employees';
+  const LOG_KEY  = 'brk_logs';
+  const NAME_KEY = 'brk_myname';
+  const CO_KEY   = 'brk_mycompany';
+
+  const getEmps  = () => JSON.parse(localStorage.getItem(EMP_KEY)  || '[]');
+  const getLogs  = () => JSON.parse(localStorage.getItem(LOG_KEY)  || '[]');
+  const saveEmps = a  => localStorage.setItem(EMP_KEY,  JSON.stringify(a));
+  const saveLogs = a  => localStorage.setItem(LOG_KEY,  JSON.stringify(a));
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+  }
+
+  // ── 시작 ──
+  window.onload = () => {
+    const name = localStorage.getItem(NAME_KEY);
+    const company = localStorage.getItem(CO_KEY);
+    if (name && company) {
+      recordBreak(name, company);
+    } else {
+      show('register');
+    }
+  };
+
+  // ── 업체 선택 ──
+  let selectedCompany = '';
+  function selectCompany(el, name) {
+    document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCompany = name;
+    checkReady();
+  }
+
+  // ── 이름 검색 ──
+  let selectedName = '';
+  function onSearch() {
+    const q = document.getElementById('reg-input').value.trim();
+    const ac = document.getElementById('reg-ac');
+    selectedName = '';
+    checkReady();
+
+    if (!q) { ac.style.display = 'none'; return; }
+    const matches = getEmps().filter(n => n.includes(q));
+    if (!matches.length) { ac.style.display = 'none'; return; }
+
+    ac.innerHTML = matches.map(n =>
+      `<div class="ac-item" onclick="pickName('${n}')">${n}</div>`
+    ).join('');
+    ac.style.display = 'block';
+  }
+
+  function pickName(name) {
+    selectedName = name;
+    document.getElementById('reg-input').value = name;
+    document.getElementById('reg-ac').style.display = 'none';
+    checkReady();
+  }
+
+  function checkReady() {
+    const btn = document.getElementById('confirm-btn');
+    if (selectedName && selectedCompany) {
+      btn.textContent = `${selectedCompany} · ${selectedName} 으로 등록`;
+      btn.style.display = 'block';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  function confirmRegister() {
+    if (!selectedName || !selectedCompany) return;
+    localStorage.setItem(NAME_KEY, selectedName);
+    localStorage.setItem(CO_KEY, selectedCompany);
+    recordBreak(selectedName, selectedCompany);
+  }
+
+  // ── 휴식 기록 ──
+  function recordBreak(name, company) {
+    const now = new Date();
+    const timeStr = now.toLocaleString('ko-KR', {
+      month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    const logs = getLogs();
+    logs.unshift({ name, company, time: timeStr, ts: Date.now() });
+    saveLogs(logs);
+
+    document.getElementById('done-company').textContent = company;
+    document.getElementById('done-name').textContent = name;
+    document.getElementById('done-time').textContent = timeStr;
+    show('done');
+  }
+
+  // ── 내 정보 초기화 ──
+  function resetMe() {
+    if (!confirm('내 정보를 초기화할까요?')) return;
+    localStorage.removeItem(NAME_KEY);
+    localStorage.removeItem(CO_KEY);
+    selectedName = '';
+    selectedCompany = '';
+    document.getElementById('reg-input').value = '';
+    document.getElementById('reg-ac').style.display = 'none';
+    document.getElementById('confirm-btn').style.display = 'none';
+    document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('selected'));
+    show('register');
+  }
+
+  // ── 관리자 ──
+  function goAdmin() {
+    const pw = prompt('비밀번호를 입력하세요');
+    if (pw === null) return;
+    if (pw !== '1234') { alert('비밀번호가 틀렸어요'); return; }
+    renderAdmin();
+    show('admin');
+  }
+
+  function renderAdmin() {
+    const emps = getEmps();
+    document.getElementById('emp-list').innerHTML = emps.length
+      ? emps.map(n => `<div class="li"><span>${n}</span><button class="x-btn" onclick="delEmp('${n}')">×</button></div>`).join('')
+      : '<div class="empty">등록된 직원이 없어요</div>';
+
+    const logs = getLogs();
+    document.getElementById('log-list').innerHTML = logs.length
+      ? logs.map(l => `<div class="log-li"><div class="log-name">${l.name}</div><div class="log-meta">${l.company} · ${l.time}</div></div>`).join('')
+      : '<div class="empty">아직 기록이 없어요</div>';
+  }
+
+  function addEmp() {
+    const input = document.getElementById('emp-input');
+    const name = input.value.trim();
+    if (!name) return;
+    const list = getEmps();
+    if (list.includes(name)) { alert('이미 있는 이름이에요'); return; }
+    list.push(name);
+    list.sort();
+    saveEmps(list);
+    input.value = '';
+    renderAdmin();
+  }
+
+  function delEmp(name) {
+    if (!confirm(`"${name}" 삭제할까요?`)) return;
+    saveEmps(getEmps().filter(n => n !== name));
+    renderAdmin();
+  }
+
+  function clearLogs() {
+    if (!confirm('모든 기록을 삭제할까요?')) return;
+    saveLogs([]);
+    renderAdmin();
+  }
+</script>
+</body>
+</html>
